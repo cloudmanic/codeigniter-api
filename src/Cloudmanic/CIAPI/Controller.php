@@ -379,6 +379,19 @@ class Controller extends Rest
 		{
 			$this->{$this->_model}->{$this->_model_methods['noextra']}();
 		} 
+
+		// Set search
+		if($this->get('search'))
+		{
+			$this->{$this->_model}->{$this->_model_methods['search']}($this->get('search'));
+		} 
+		
+		// Set which is a CSV list.
+		if($this->get('which'))
+		{
+			$which = explode(',', $this->get('which'));		
+			$this->{$this->_model}->{$this->_model_methods['which']}($which);	
+		}
 		
 		// Set select fields
 		if($this->_select_fields)
