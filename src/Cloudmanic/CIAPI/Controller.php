@@ -1,13 +1,13 @@
-<?php defined('BASEPATH') OR exit('No direct script access allowed');
+<?php 
 //
 // By: Spicer Matthews
 // Company: Cloudmanic Labs, LLC 
 // Website: http://cloudmanic.com
 //
 
-echo "asdf";
+namespace Cloudmanic\CIAPI;
 
-class API_Controller extends REST_Controller 
+class Controller extends Rest 
 {
 	protected $_model = '';
 	protected $_model_methods;

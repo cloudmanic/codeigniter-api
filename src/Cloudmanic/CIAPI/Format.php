@@ -7,8 +7,11 @@
  * @author		Phil Sturgeon
  * @license		http://philsturgeon.co.uk/code/dbad-license
  */
-class Format {
 
+namespace Cloudmanic\CIAPI;
+ 
+class Format 
+{
 	// Array to convert
 	protected $_data = array();
 

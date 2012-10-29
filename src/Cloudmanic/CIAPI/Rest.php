@@ -1,4 +1,4 @@
-<?php defined('BASEPATH') OR exit('No direct script access allowed');
+<?php 
 //
 // By: Spicer Matthews
 // Company: Cloudmanic Labs, LLC 
@@ -6,8 +6,11 @@
 // Code Taken From: Phil Sturgeon http://philsturgeon.co.uk
 //
 
-class REST_Controller extends CI_Controller 
+namespace Cloudmanic\CIAPI;
+
+class Rest extends \CI_Controller 
 {
+	public $format = null;
 	protected $_request_method;
 	protected $_output_format;
 	protected $_get_args = array();
@@ -15,8 +18,7 @@ class REST_Controller extends CI_Controller
 	protected $_put_args = array();
 	protected $_delete_args = array();
 	protected $_args = array();
-	protected $_spark_version = '1.0.0';
-	 
+
 	// List all supported methods, the first will be the default format
 	protected $_supported_formats = array(
 		'xml' => 'application/xml',
@@ -33,25 +35,17 @@ class REST_Controller extends CI_Controller
 															'filtered' => 0); 
 	
 	//
-	// Constructor …
+	// Constructor.
 	//
 	function __construct()
 	{
 		parent::__construct();
 		
-		// If this is a spark we load up the spark package 
-		// so we can have access to all the files within.
-		if(defined('SPARKPATH'))
-		{			
-			$this->load->spark('cloudmanic-api/' . $this->_spark_version);
-			log_message('debug', 'Spark Package Initialized');
-		}
-	
 		// Load up configs & libraries.
 		$this->load->config('rest');
 		$this->load->library('security');
-		$this->load->library('format');
-		
+		$this->format = new Format();
+
 		// Set up our GET / POST variables
 		$this->_get_args = array_merge($this->uri->ruri_to_assoc(), $_GET);
 		$this->_post_args = $_POST;
