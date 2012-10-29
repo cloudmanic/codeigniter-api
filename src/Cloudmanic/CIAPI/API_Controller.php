@@ -5,6 +5,8 @@
 // Website: http://cloudmanic.com
 //
 
+echo "asdf";
+
 class API_Controller extends REST_Controller 
 {
 	protected $_model = '';
