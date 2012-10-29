@@ -393,6 +393,41 @@ class Controller extends Rest
 			$this->{$this->_model}->{$this->_model_methods['which']}($which);	
 		}
 		
+		// Set user generated selected fields
+		if($this->get('select'))
+		{
+			$select = explode(',', $this->get('select'));
+			
+			// If we set what fields a user can select we do not 
+			// want to give them the ablity to select anything differnet.
+			// Sort of a sub-set of a sub-set.
+			if($this->_select_fields)
+			{
+				$old = $this->_select_fields;
+				$tmp = array_diff($this->_select_fields, $select);
+								
+				foreach($tmp AS $key => $row)
+				{
+					$index = array_search($row, $old);
+				
+					if($index >= 0)
+					{
+						unset($old[$index]);
+					}
+				}
+				
+				// For security we only overide the system selects if 
+				// there is at least once match.
+				if(count($old) > 0)
+				{
+					$this->_select_fields = $old;
+				}
+			} else
+			{
+				$this->_select_fields[] = $select;
+			}
+		}
+		
 		// Set select fields
 		if($this->_select_fields)
 		{
