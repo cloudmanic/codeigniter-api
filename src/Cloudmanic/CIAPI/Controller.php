@@ -27,6 +27,14 @@ class Controller extends Rest
 	{
 		$this->_check_access('get');
 		$this->_model_init();
+		
+		// Set if this request is already cached in redis.
+		if($data = $this->_redis_get_data())
+		{			
+			$this->response($data, 200);
+		}
+		
+		// Setup the query.
 		$this->_query_init();
 		
 		// If we pass in an id field we call a different function. 
@@ -39,6 +47,9 @@ class Controller extends Rest
 			$this->_return['filtered'] = $this->{$this->_model}->{$this->_model_methods['filtered']}();
 			$this->_return['total'] = $this->{$this->_model}->{$this->_model_methods['total']}();				
 		}
+		
+		// Is redis caching turned on? If so store the query in the cache.
+		$this->_redis_store($this->_return);
 
 		$this->response($this->_return, 200);
 	}
@@ -68,6 +79,9 @@ class Controller extends Rest
 			$this->_return['data']['Id'] = $this->{$this->_model}->{$this->_model_methods['create']}($this->_insert_filter($_POST));
 		}
 		
+		// Flush cache, on inserts.
+		$this->cache_flush();
+		
 		$this->response($this->_return, 200);
 	}
 	
@@ -95,6 +109,9 @@ class Controller extends Rest
 			$this->_return['status'] = 1;
 			$this->{$this->_model}->{$this->_model_methods['update']}($this->_update_filter($_POST), $this->get('id'));
 		}
+		
+		// Flush cache, on updates.
+		$this->cache_flush();
 		
 		$this->response($this->_return, 200);
 	}
@@ -245,7 +262,136 @@ class Controller extends Rest
 		$this->_not_allowed_methods = array();		
 	}
 	
+	//
+	// Returns a hash of this request.
+	//
+	function get_request_hash()
+	{
+		// Args.
+		$args = $this->_args;
+	
+		// Unset access_token
+		if(isset($args['access_token']))
+		{
+			unset($args['access_token']);
+		}
+		
+		// Unset account_id
+		if((! isset($args['account_id']) && (isset($this->data['me']['UsersAccountId']))))
+		{
+			$args['account_id'] = $this->data['me']['UsersAccountId'];
+		}
+	
+		if(isset($args['account_id']))
+		{
+			return $this->_model . '-' . $args['account_id'] . '-' . md5(json_encode($args));
+		} else
+		{
+			return $this->_model . '-' . md5(json_encode($args));			
+		}
+	}
+	
+	//
+	// Flush cache, all cached entires for this particular model.
+	// Right now we only support redis but we might support more in the
+	// future.
+	//
+	function cache_flush()
+	{
+		if(! $config = $this->use_redis())
+		{
+			return false;
+		}
+		
+		// Get account_id
+		if((! isset($this->_args['account_id']) && (isset($this->data['me']['UsersAccountId']))))
+		{
+			$account_id = $this->data['me']['UsersAccountId'];
+		} 
+		
+		// Get the key search string.
+		if(isset($account_id))
+		{
+			$search = $this->_model . '-' . $account_id . '-*';
+		} else
+		{
+			$search = $this->_model . '-*';			
+		}
+		
+		// Grab all the keys that match this account / model.
+		$redis = new \Illuminate\Redis\Database($config['host'], $config['port'], $config['database']);		
+		$keys =  $redis->keys($search);
+		
+		// Loop through and delete the cache of these keys.
+		foreach($keys AS $key => $row)
+		{
+			$redis->del($row);
+		}
+	}
+	
+	//
+	// Validate the use of redis.
+	//
+	function use_redis()
+	{
+		$models = config_item('api_cache_models');
+		$config = config_item('api_redis');
+
+		// Made sure we have caching turned on.
+		if(! $config['enable'])
+		{
+			return false;
+		}
+		
+		// Make sure this is a model we want to cache.
+		if(! in_array($this->_model, $models))
+		{
+			return false;
+		}
+		
+		return $config;
+	}
+	
+	
 	// ------------- Private Helper Functions --------------- //
+
+	//
+	// Check to see if we have the data stored in redis.
+	//
+	function _redis_get_data()
+	{
+		if(! $config = $this->use_redis())
+		{
+			return false;
+		}
+
+		$hash = $this->get_request_hash();
+		
+		$redis = new \Illuminate\Redis\Database($config['host'], $config['port'], $config['database']);
+		if($redis->exists($hash))
+		{
+			$json = $redis->get($hash);
+			return json_decode($json, true);
+		}		
+		
+		return false;
+	}
+
+	//
+	// Store the last request with redis to make the next request faster.
+	//
+	function _redis_store($data)
+	{	
+		if(! $config = $this->use_redis())
+		{
+			return false;
+		}
+
+		$hash = $this->get_request_hash();
+		
+		$redis = new \Illuminate\Redis\Database($config['host'], $config['port'], $config['database']);
+		$redis->set($hash, json_encode($data));		
+	}
 
 	//
 	// Sometimes we do not want to give a user complete
