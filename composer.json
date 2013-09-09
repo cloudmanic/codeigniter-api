@@ -5,6 +5,5 @@
 		"psr-0": {"Cloudmanic\\CIAPI": "src/"}
 	},
 	"require": {
-		"illuminate/redis": "dev-master"
 	}
 }
